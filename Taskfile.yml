@@ -11,10 +11,15 @@ tasks:
       - tmux_gen.rb
     generates:
       - extra.conf
-      - hints/*.txt
+
+  install:
+    desc: Symlink this repo to ~/.config/tmux-gen and update .tmux.conf
+    cmds:
+      - ln -sfn {{.USER_WORKING_DIR}} ~/.config/tmux-gen
+      - echo "Make sure to add 'source-file ~/.config/tmux-gen/extra.conf' to your ~/.tmux.conf"
 
   reload:
-    desc: Reload tmux configuration
+    desc: Build and source the new config
     deps: [build]
     cmds:
       - tmux source-file ~/.tmux.conf
@@ -24,3 +29,4 @@ tasks:
     desc: Build and reload
     cmds:
       - task: reload
+

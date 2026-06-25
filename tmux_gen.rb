@@ -7,12 +7,15 @@ require 'rbconfig'
 
 EXTEND_YML = File.expand_path('extend.yml', __dir__)
 HELPER_SCRIPT = File.expand_path('tmux_mode_helper.rb', __dir__)
+SMART_SWITCH = File.expand_path('smart_session_switch.rb', __dir__)
 HINTS_DIR = File.expand_path('hints', __dir__)
 RUBY_BIN = RbConfig.ruby
 
 FileUtils.mkdir_p(HINTS_DIR)
 
-data = YAML.load_file(EXTEND_YML)
+data_content = File.read(EXTEND_YML)
+data_content.gsub!('#{smart_session_switch}', SMART_SWITCH)
+data = YAML.load(data_content)
 
 def dependency_met?(dep)
   return true if dep.nil? || dep.empty?
