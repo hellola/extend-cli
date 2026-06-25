@@ -1,0 +1,26 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Generate tmux configuration from extend.yml
+    cmds:
+      - mkdir -p hints
+      - ruby tmux_gen.rb > extra.conf
+    sources:
+      - extend.yml
+      - tmux_gen.rb
+    generates:
+      - extra.conf
+      - hints/*.txt
+
+  reload:
+    desc: Reload tmux configuration
+    deps: [build]
+    cmds:
+      - tmux source-file ~/.tmux.conf
+      - tmux display-message "Tmux configuration reloaded!"
+
+  default:
+    desc: Build and reload
+    cmds:
+      - task: reload
