@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../bundle.schema.json
+description: rails
+children:
+  c:
+    description: console
+    exec: rails c
+  g:
+    description: guard
+    exec: bundle exec guard
+  r:
+    description: run
+    exec: rails r
+  s:
+    description: spec
+    exec: bundle exec rspec
+  # Adding related ones from rais/rsk
+  gen:
+    description: generate
+    exec: rails g
+  sk:
+    description: server-kill
+    exec: pkf $(cat tmp/pids/server.pid)

@@ -1,0 +1,657 @@
+application:
+  a:
+    children:
+      d:
+        description: datagrip
+        exec: wmname LG3D && ~/apps/DataGrip-2019.1/bin/datagrip.sh
+      l:
+        children:
+          p:
+            description: port
+            exec: >-
+              python /home/ewoudt/Dev/launchpad-binder/launchpad_binder.py
+              --bindings-file ~/dotfiles/launchpad/launchpad_bindings.json
+        description: list
+      o:
+        description: odrive
+        exec: /opt/OpenDrive/odrive
+      s:
+        description: synergy
+        exec: synergys
+      u:
+        children:
+          r:
+            description: remote
+            exec: /opt/urserver/urserver --daemon
+        description: unified
+    description: application
+bundle:
+  b:
+    children:
+      e:
+        description: exec
+        exec: bundle exec
+    description: bundle
+config:
+  c:
+    children:
+      d:
+        children:
+          e:
+            description: edit
+            exec: vim ~/.config/bspwm/bspwmrc
+        description: desktop
+      h:
+        children:
+          e:
+            description: edit
+            exec: >-
+              vim -O /home/ewoudt/.config/sxhkd/sxhkdrc_body
+              /home/ewoudt/.config/sxhkd/one /home/ewoudt/.config/sxhkd/two
+        description: hotkey
+      r:
+        children:
+          k:
+            description: keys
+            exec: >-
+              ess && esu && change_desktop.sh desktop && pk sxhkd && sleep 1s &&
+              sxhkd & echo "reloaded"
+        description: reload
+      s:
+        children:
+          a:
+            description: apps
+            exec: >-
+              startorswitch a slack & startorswitch a franz & startorswitch a
+              spotify& synergys &
+          b:
+            description: background
+            exec: set_bg_col.sh 3D3D3D && xsetroot -cursor_name left_ptr
+          d:
+            description: displays
+            exec: >-
+              xrandr --output HDMI-0 --mode 2560x1440 && xrandr --output
+              HDMI-1-1 --mode 2560x1440 && xrandr --output HDMI-1-1 --pos 2560x0
+              && bspc monitor HDMI-1-1 -a {term_two,web_two,work_two,misc_two}
+          e:
+            description: edit
+            exec: vim -O ~/.zshrc ~/.alias.zsh ~/.env.zsh
+          k:
+            description: keyboard
+            exec: setxkbmap -layout us -variant dvorak && clm && xset r rate 150 60
+          m:
+            description: makro
+            exec: cnee --replay -f ~/startup.xns
+        description: setup
+      t:
+        children:
+          e:
+            description: edit
+            exec: vim ~/.zshrc
+        description: terminal
+    description: config
+directory:
+  d:
+    children:
+      s:
+        children:
+          c:
+            description: current
+            exec: du -sh .
+        description: size
+        exec: du -sh
+    description: directory
+extend:
+  e:
+    children:
+      s:
+        children:
+          a:
+            children:
+              a:
+                children:
+                  o:
+                    description: osspecific
+                    exec: extend-shell --os-only alias add
+                description: add
+                exec: extend-shell alias add
+              l:
+                description: list
+                exec: extend-shell alias ls
+              r:
+                description: remove
+                exec: extend-shell alias rm
+            description: alias
+          c:
+            description: choose
+            exec: cat /opt/extend/extend_search | fzf
+          e:
+            children:
+              a:
+                children:
+                  o:
+                    description: only
+                    exec: extend-shell env add -o
+                description: add
+                exec: extend-shell env add
+              l:
+                description: list
+                exec: extend-shell env ls
+            description: env
+            exec: extend-shell key exec
+          f:
+            children:
+              a:
+                description: add
+                exec: extend-shell func add
+              l:
+                description: list
+                exec: extend-shell func ls
+              r:
+                description: remove
+                exec: extend-shell func rm
+            description: function
+          h:
+            children:
+              a:
+                children:
+                  s:
+                    description: shell
+                    exec: extend-shell key add
+                  t:
+                    description: tmux
+                    exec: extend-shell key add-tmux
+                  w:
+                    children:
+                      m:
+                        description: manager
+                        exec: extend-shell key add-wm
+                    description: window
+                description: add
+              r:
+                description: remove
+                exec: extend-shell hotkey rm
+            description: hotkey
+          k:
+            children:
+              a:
+                children:
+                  t:
+                    children:
+                      c:
+                        description: command
+                        exec: extend-shell key add-tmux --command
+                    description: tmux
+                    exec: extend-shell key add-tmux
+                description: add
+                exec: extend-shell key add
+              l:
+                description: list
+                exec: extend-shell key ls
+              r:
+                description: rm
+                exec: extend-shell key rm
+            description: key
+          r:
+            children:
+              s:
+                description: service
+                exec: extend-server &
+            description: run
+          s:
+            children:
+              e:
+                description: execute
+                exec: extend-shell startup exec
+            description: startup
+            exec: extend-shell sync
+          u:
+            description: update
+            exec: source /opt/extend/extend.zsh
+        description: shell
+        exec: extend-shell
+    description: extend
+eye:
+  e:
+    children:
+      r:
+        children:
+          s:
+            description: sneakers
+            exec: eye restart sneakers
+        description: restart
+        exec: eye restart
+      t:
+        children:
+          s:
+            description: sneakers
+            exec: tail -f ../logs/sneakers.log
+        description: tail
+    description: eye
+file:
+  f:
+    children:
+      c:
+        children:
+          c:
+            description: contents
+            exec: xclip -sel c <
+          d:
+            description: directory
+            exec: tar cvzf $(basename $PWD).tar.gz .
+          f:
+            description: follow
+            exec: tail -f
+        description: compress
+      e:
+        children:
+          a:
+            description: archive
+            exec: tar -xf
+          c:
+            description: config
+            exec: >-
+              find ~ -maxdepth 1 -type l -name '.*' > ~/tmp/config; find ~
+              -maxdepth 1 -type f -name '.*' >> ~/tmp/config; find ~/.config
+              -type f >> ~/tmp/config; vim -- $(cat ~/tmp/config | fzf )
+          l:
+            description: links
+            exec: vim $1/$(ls -ltr $1 | awk '{file=$9}END{print file}')
+          p:
+            description: posts
+            exec: vim ~/Dev/metaldash/src/posts.yaml
+          r:
+            description: recent
+            exec: fasd -e code -f
+          s:
+            description: search
+            exec: vim $(fzf)
+          w:
+            description: which
+            exec: $EDITOR $(which $1)
+        description: edit
+        exec: ranger
+      f:
+        children:
+          'n':
+            description: name
+            exec: find . -iname
+          s:
+            description: space
+            exec: df -h
+        description: find
+      l:
+        children:
+          c:
+            description: count
+            exec: wc -l
+        description: line
+      o:
+        children:
+          r:
+            description: recent
+            exec: >-
+              type=$@; if [[ ! -z $type ]] then; found=$(find . -type f -iname
+              "*.$type" -printf '%T@,%p\n' | sort -n | cut -d',' -f 2 | tail -n
+              1); else; found=$(/usr/bin/ls -brt | tail -n 1); fi; xdg-open
+              $found
+        description: open
+      p:
+        children:
+          e:
+            description: execute
+            exec: chmod +x
+        description: permission
+      s:
+        children:
+          c:
+            description: contents
+            exec: ag
+          l:
+            description: links
+            exec: export fsl_file_scratch_links=~/Dev/metaldash/src/links.yaml
+          m:
+            description: max
+            exec: du -h --max-depth 1 | sort -nr
+        description: search
+    description: file
+folder:
+  f:
+    children:
+      .:
+        description: .dot
+        exec: cd ~/dotfiles
+      c:
+        description: config
+        exec: cd ~/dotfiles
+      d:
+        description: downloads
+        exec: cd ~/Downloads
+      r:
+        description: remove
+        exec: rm -rf
+      s:
+        description: scratch
+        exec: cd ~/Dev/scratch
+      t:
+        children: {}
+        description: tennis
+        exec: cd ~/Dev/tennis-betting
+    description: folder
+git:
+  g:
+    children:
+      c:
+        children:
+          l:
+            description: lone
+            exec: git clone
+        description: c
+      d:
+        children:
+          c:
+            description: cached
+            exec: git diff --cached
+        description: diff
+      s:
+        children:
+          p:
+            description: pop
+            exec: git stash pop
+        description: stash
+    description: git
+li:
+  l:
+    children:
+      s:
+        children:
+          d:
+            description: directories
+            exec: ls -d */
+          f:
+            description: files
+            exec: colorls -sd
+          r:
+            description: recent
+            exec: /bin/ls -trl --color=auto
+        description: st
+        exec: /bin/ls -lShr --color=auto
+    description: li
+music:
+  m:
+    children:
+      c:
+        description: chill
+        exec: mpsyt playurl bebuiaSKtU4
+    description: music
+network:
+  'n':
+    children:
+      a:
+        children:
+          i:
+            description: ip
+            exec: hostname -i
+        description: address
+      c:
+        children:
+          s:
+            description: staging
+            exec: mosh tennis@staging.tennis --ssh="ssh"
+        description: connect
+      s:
+        children:
+          c:
+            description: connections
+            exec: nmcli
+        description: show
+    description: network
+open:
+  o:
+    children:
+      j:
+        description: journal
+        exec: emacs -nw ~/.journal.org
+    description: open
+package:
+  p:
+    children:
+      i:
+        children:
+          f:
+            description: file
+            exec: sudo dpkg -i
+        description: install
+        exec: sudo apt-get install
+      r:
+        description: remove
+        exec: _ pacman -Rd
+      s:
+        children:
+          r:
+            description: repository
+            exec: pacman -Ss
+        description: search
+      u:
+        description: uninstall
+        exec: sudo pacman -Syu
+    description: package
+process:
+  p:
+    children:
+      k:
+        children:
+          f:
+            description: force
+            exec: kill -9
+        description: kill
+        exec: pkill -f
+      s:
+        children:
+          a:
+            description: all
+            exec: htop
+          e:
+            description: environment
+            exec: strings /proc/$1/environ
+        description: show
+        exec: /bin/ps -o pid,cmd $(pgrep -f $@) 2>&-;
+    description: process
+project:
+  p:
+    children:
+      c:
+        children:
+          'n':
+            description: new
+            exec: >-
+              fs-folder-scratch; mkdir $1; cd $1; touch notes.org; echo '* $' >>
+              notes.org
+        description: create
+      s:
+        children:
+          f:
+            description: file
+            exec: mv $1 .staging
+        description: stage
+    description: project
+rails_bundle:
+  r:
+    bundle: bundles/rails.extend.yml
+screen:
+  s:
+    children:
+      'n':
+        description: normal
+        exec: xrandr --output HDMI-0 --rotate normal
+      r:
+        description: rotate
+        exec: xrandr --output HDMI-0 --rotate right
+    description: screen
+sl:
+  s:
+    children:
+      s:
+        children:
+          l:
+            description: list
+            exec: ls ~/.soundboard/
+        description: sounds
+    description: sl
+sound:
+  s:
+    children:
+      l:
+        description: loopback
+        exec: pactl load-module module-loopback latency_msec=1
+    description: sound
+ssh:
+  s:
+    children:
+      c:
+        children:
+          p:
+            description: public
+            exec: cat ~/.ssh/id_rsa.pub | xclip -sel clip
+        description: copy
+    description: ssh
+sudo:
+  s:
+    children:
+      f:
+        children:
+          e:
+            description: edit
+            exec: sudo vim
+        description: file
+    description: sudo
+system:
+  s:
+    children:
+      d:
+        children:
+          l:
+            description: list
+            exec: lsblk | sed -e'/snap/d'
+          m:
+            description: mount
+            exec: mount_disks.sh
+          u:
+            description: usage
+            exec: df -h
+        description: disk
+      i:
+        children:
+          a:
+            description: add
+            exec: echo "$@" >> ~/dotfiles/arch-install-packages
+        description: install
+      m:
+        children:
+          s:
+            children:
+              u:
+                description: up
+                exec: razercfg -d mouse -p 4
+            description: sensitivity
+        description: mouse
+      p:
+        children:
+          m:
+            description: monitor
+            exec: htop -d 3
+        description: process
+      s:
+        children:
+          d:
+            description: disable
+            exec: _ systemctl disable
+          e:
+            description: enable
+            exec: sudo systemctl enable
+          r:
+            description: restart
+            exec: _ systemctl restart
+          s:
+            description: status
+            exec: systemctl status
+        description: service
+    description: system
+systemctl:
+  s:
+    children:
+      s:
+        children:
+          i:
+            description: info
+            exec: systemctl status
+          j:
+            description: jdown
+            exec: sudo systemctl stop
+          k:
+            description: kup
+            exec: sudo systemctl start
+        description: service
+    description: systemctl
+task:
+  t:
+    children:
+      t:
+        children:
+          g:
+            description: general
+            exec: task-tree --output ~/.task-tree-general.json
+        description: tree
+    description: task
+tmux:
+  t:
+    children:
+      a:
+        children:
+          s:
+            description: scratch
+            exec: tmux attach -dt 'SCRATCH'
+        description: attach
+      d:
+        description: dash
+        exec: ~/.tmux_sessions/dash.tmux.sh
+    description: tmux
+util:
+  u:
+    children:
+      s:
+        children:
+          s:
+            description: scratch
+            exec: setupscratch.sh
+        description: setup
+    description: util
+utility:
+  u:
+    children:
+      s:
+        description: scratch
+        exec: setupscratch.sh
+    description: utility
+variable:
+  v:
+    children:
+      e:
+        children:
+          p:
+            description: path
+            exec: export vep_variable_extend_path=/opt/extend
+        description: extend
+    description: variable
+x11:
+  x:
+    children:
+      s:
+        children:
+          s:
+            description: sub
+            exec: >-
+              Xephyr -br -ac -noreset -screen 1270x710 -reset :3 & DISPLAY=:3
+              bspwm & DISPLAY=:3 chromium& DISPLAY=:3 bspc node -t fullscreen
+        description: start
+    description: x11

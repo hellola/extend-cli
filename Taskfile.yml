@@ -1,16 +1,28 @@
-version: '3'
+version: "3"
 
 tasks:
-  build:
+  build:tmux:
     desc: Generate tmux configuration from extend.yml
     cmds:
       - mkdir -p hints
       - ruby tmux_gen.rb > extra.conf
+      - cp extra.conf ~/.tmux/extra.conf
     sources:
       - extend.yml
       - tmux_gen.rb
     generates:
       - extra.conf
+
+  build:zsh:
+    desc: Generate zsh aliases from extend_source.yml
+    cmds:
+      - task: sync
+
+  build:
+    desc: Build both tmux and zsh configs
+    cmds:
+      - task: build:tmux
+      - task: build:zsh
 
   install:
     desc: Symlink this repo to ~/.config/tmux-gen and update .tmux.conf
@@ -25,8 +37,18 @@ tasks:
       - tmux source-file ~/.tmux.conf
       - tmux display-message "Tmux configuration reloaded!"
 
+  tui:
+    desc: Open the TUI manager
+    cmds:
+      - cd tui && bun start
+
+  sync:
+    desc: Sync Zsh aliases from YAML
+    cmds:
+      - cd tui && bun run sync
+
   default:
     desc: Build and reload
     cmds:
+      - task: sync
       - task: reload
-

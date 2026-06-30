@@ -15,7 +15,75 @@ FileUtils.mkdir_p(HINTS_DIR)
 
 data_content = File.read(EXTEND_YML)
 data_content.gsub!('#{smart_session_switch}', SMART_SWITCH)
-data = YAML.load(data_content)
+raw_data = YAML.load(data_content)
+
+def resolve_bundles(entries)
+  resolved = []
+  queue = entries.dup
+  processed = {}
+
+  until queue.empty?
+    entry = queue.shift
+    name, table_data = entry.first
+    next if processed[name]
+    
+    if table_data['mount'] == false
+      processed[name] = true
+      next
+    end
+
+    processed[name] = true
+
+    new_binds = []
+    table_data['binds']&.each do |bind|
+      if bind['mount'] == false
+        next
+      end
+
+      if bind['bundle']
+        bundle_path = File.expand_path(bind['bundle'], File.dirname(EXTEND_YML))
+        if File.exist?(bundle_path)
+          bundle_content = YAML.load_file(bundle_path)
+          bundle_name = File.basename(bundle_path, '.extend.yml')
+          
+          new_binds << {
+            'key' => bind['key'],
+            'table' => bundle_name,
+            'description' => bind['description'] || bundle_content['description'] || bundle_name
+          }
+
+          unless processed[bundle_name] || queue.any? { |e| e.key?(bundle_name) }
+            bundle_table_binds = []
+            bundle_content['children']&.each do |k, v|
+              if v.is_a?(Hash)
+                type = v.key?('exec') ? 'exec' : (v.key?('send') ? 'send' : nil)
+                action = v['exec'] || v['send'] || v['action']
+                bundle_table_binds << {
+                  'key' => k,
+                  'type' => type,
+                  'action' => action,
+                  'description' => v['description']
+                }
+              else
+                bundle_table_binds << { 'key' => k, 'action' => v }
+              end
+            end
+            queue << { bundle_name => { 'binds' => bundle_table_binds, 'modal' => true } }
+          end
+        else
+          STDERR.puts "Warning: Bundle not found: #{bundle_path}"
+        end
+      else
+        new_binds << bind
+      end
+    end
+    
+    resolved << { name => table_data.merge('binds' => new_binds) }
+  end
+  resolved
+end
+
+data = resolve_bundles(raw_data)
 
 def dependency_met?(dep)
   return true if dep.nil? || dep.empty?

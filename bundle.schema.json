@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tmux Mode Bundle Configuration",
+  "type": "object",
+  "properties": {
+    "description": {
+      "type": "string",
+      "description": "Description of the bundle mode."
+    },
+    "children": {
+      "type": "object",
+      "description": "Mapping of keys to actions.",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "string", "description": "The tmux command or string to send." },
+          {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string" },
+              "exec": { "type": "string", "description": "Command to run in the terminal." },
+              "send": { "type": "string", "description": "Keys to send to the terminal." },
+              "action": { "type": "string", "description": "Raw tmux command." }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "required": ["children"]
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tmux Mode Generator Configuration",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "description": "A key table definition where the key is the table name.",
+    "additionalProperties": {
+      "type": "object",
+      "properties": {
+        "modal": {
+          "type": "boolean",
+          "description": "If true, stay in this mode after executing a command."
+        },
+        "mount": {
+          "type": "boolean",
+          "description": "If false, this entire table and its bindings will be ignored."
+        },
+        "binds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "description": "The key combination to bind (e.g., 'C-e', 'M-C-n', 'h')."
+              },
+              "table": {
+                "type": "string",
+                "description": "Switch to this key table."
+              },
+              "bundle": {
+                "type": "string",
+                "description": "Path to a bundle YAML file to load as a sub-mode."
+              },
+              "mount": {
+                "type": "boolean",
+                "description": "If false, this specific binding will be ignored."
+              },
+              "description": {
+                "type": "string",
+                "description": "A mnemonic description used in the fuzzy search menu."
+              },
+              "action": {
+                "type": "string",
+                "description": "The tmux command to run or string to send."
+              },
+              "type": {
+                "type": "string",
+                "enum": ["exec", "send", "test", "run"],
+                "description": "How to interpret the action: 'exec' runs in terminal, 'send' sends keys, 'run' runs tmux shell command, 'test' displays message."
+              },
+              "dependency": {
+                "type": "string",
+                "description": "Only bind this key if the specified command is available in the system PATH."
+              }
+            },
+            "required": ["key"]
+          }
+        }
+      },
+      "required": ["binds"]
+    },
+    "minProperties": 1,
+    "maxProperties": 1
+  }
+}
