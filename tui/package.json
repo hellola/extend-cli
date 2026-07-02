@@ -1,0 +1,33 @@
+{
+  "name": "tui",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "bun src/index.tsx",
+    "sync": "bun src/index.tsx sync",
+    "build": "bun build src/index.tsx --target=node --outfile=dist/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@opentui/core": "^0.4.2",
+    "@opentui/react": "^0.4.2",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "fuzzysort": "^3.1.0",
+    "js-yaml": "^5.1.0",
+    "react": "^19.2.7",
+    "yargs": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "@types/react": "^19.2.17",
+    "@types/yargs": "^17.0.35",
+    "esbuild": "^0.28.1",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3"
+  }
+}

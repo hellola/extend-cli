@@ -4,12 +4,10 @@ tasks:
   build:tmux:
     desc: Generate tmux configuration from extend.yml
     cmds:
-      - mkdir -p hints
-      - ruby tmux_gen.rb > extra.conf
-      - cp extra.conf ~/.tmux/extra.conf
+      - task: sync
     sources:
       - extend.yml
-      - tmux_gen.rb
+      - tui/src/logic.ts
     generates:
       - extra.conf
 

@@ -105,15 +105,12 @@ begin
     selected = `#{fzf_command} < #{Shellwords.escape(hint_file)}`.strip
     
     if !selected.empty?
-        # Format is "Table     : Key      │ Description │ Action"
+        # Format is "Mnemonic │ Description │ TableDescription │ Table:Key │ Action"
         parts = selected.split('│')
-        first_part = parts[0].strip
-        # "Table     : Key"
-        table_part, key = first_part.split(':')
-        table_name = table_part.strip
-        key = key.strip
+        table_info = parts[3].strip # Table:Key
+        table_name, key = table_info.split(':')
         
-        execute_bind(key, table_name)
+        execute_bind(key.strip, table_name.strip)
     end
   end
 rescue => e
