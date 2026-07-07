@@ -16,6 +16,7 @@ export interface AppConfig {
       enabled: boolean;
       source_path: string;
       output_path: string;
+      prefix?: string;
     }
   }
 }
@@ -76,11 +77,11 @@ export function validateYaml(data: any) {
 export function resolveCommand(action: string | { [platform: string]: string } | undefined): string {
   if (!action) return "";
   if (typeof action === 'string') return action;
-  
+
   const platform = process.platform;
   if (action[platform]) return action[platform];
   if (action['default']) return action['default'];
-  
+
   // Fallback to first available key if platform not found
   const firstKey = Object.keys(action).find(k => k !== 'default');
   if (firstKey) return action[firstKey];
@@ -90,7 +91,7 @@ export function resolveCommand(action: string | { [platform: string]: string } |
 export function loadTree(filePath: string): Tree {
   const content = fs.readFileSync(filePath, 'utf8');
   const source = yaml.load(content) as any;
-  
+
   if (Array.isArray(source)) {
     validateYaml(source);
     return tableToTree(source, path.dirname(filePath));
@@ -141,7 +142,7 @@ export class ZshStrategy implements ConfigStrategy {
       try {
         const originalPath = execSync(`which ${m}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
         if (originalPath && !originalPath.includes('not found')) {
-           output.push(`alias extend_original_${m}='${originalPath}'`);
+          output.push(`alias extend_original_${m}='${originalPath}'`);
         }
       } catch (e) {
         // Command doesn't exist, ignore
@@ -152,15 +153,15 @@ export class ZshStrategy implements ConfigStrategy {
     // 2. Render entries, swapping system commands for our preserved ones
     allEntries.forEach(entry => {
       let cmd = entry.cmd;
-      
+
       // If the command is exactly one of our short mnemonics, and we preserved it
       mnemonics.forEach(m => {
         const regex = new RegExp(`(^|\\s)${m}(\\s|$)`, 'g');
         if (regex.test(cmd)) {
-           // Only replace if we actually defined a preservation alias for it
-           if (output.some(line => line.startsWith(`alias extend_original_${m}=`))) {
-             cmd = cmd.replace(regex, `$1extend_original_${m}$2`);
-           }
+          // Only replace if we actually defined a preservation alias for it
+          if (output.some(line => line.startsWith(`alias extend_original_${m}=`))) {
+            cmd = cmd.replace(regex, `$1extend_original_${m}$2`);
+          }
         }
       });
 
@@ -169,7 +170,13 @@ export class ZshStrategy implements ConfigStrategy {
           output.push(cmd);
           break;
         case 'func':
-          output.push(`function ${entry.name} { ${cmd} }`);
+          if (cmd.includes('\n')) {
+            output.push(`function ${entry.name} {`);
+            cmd.split('\n').forEach(line => output.push(`  ${line}`));
+            output.push(`}`);
+          } else {
+            output.push(`function ${entry.name} { ${cmd} }`);
+          }
           if (mnemonicMap[entry.mnemonic][0] === entry) {
             output.push(`alias ${entry.mnemonic}=${entry.name}`);
           }
@@ -197,11 +204,11 @@ export class ZshStrategy implements ConfigStrategy {
 
     // Generate fzf hint file
     const allEntries = getAllEntries(tree, this);
-    
+
     // Calculate max widths for alignment
     let maxMnemonic = 0;
     let maxLabel = 0;
-    
+
     allEntries.forEach(e => {
       const label = `${e.category} -> ${e.description}`;
       if (e.mnemonic.length > maxMnemonic) maxMnemonic = e.mnemonic.length;
@@ -214,7 +221,7 @@ export class ZshStrategy implements ConfigStrategy {
       const alignedLabel = label.padEnd(maxLabel);
       return `${mnemonic} │ ${alignedLabel}`;
     });
-    
+
     const hintPath = path.join(CONFIG_DIR, 'zsh_fzf_hints.txt');
     fs.writeFileSync(hintPath, hintLines.join("\n"));
   }
@@ -242,7 +249,16 @@ export class TmuxStrategy implements ConfigStrategy {
 
   render(tree: Tree): string {
     const config = loadConfig();
-    return generateTmux(config.renderers.tmux.source_path);
+    const tmuxConfig = config.renderers.tmux;
+    const prefix = tmuxConfig?.prefix;
+
+    let output = generateTmux(config.renderers.tmux.source_path);
+
+    if (prefix) {
+      output = `bind-key -n ${prefix} switch-client -Troot\n` + output;
+    }
+
+    return output;
   }
 
   sync() {
@@ -255,9 +271,132 @@ export class TmuxStrategy implements ConfigStrategy {
   }
 }
 
+export class HammerspoonStrategy implements ConfigStrategy {
+  id = 'hammerspoon';
+  mnemonicSeparator = '';
+
+  getMnemonic(parent: string, key: string): string {
+    return parent + key;
+  }
+
+  getEntryName(mnemonic: string, slugParts: string[]): string {
+    return slugParts.filter(s => s).map(s => s.replace(/\s+/g, '-')).join('-');
+  }
+
+  splitMnemonic(mnemonic: string): string[] {
+    return mnemonic.split('');
+  }
+
+  getSourceCommand(outputPath: string): string {
+    return `dofile("${outputPath}")`;
+  }
+
+  render(tree: Tree): string {
+    const config = loadConfig();
+    const hsConfig = config.renderers.hammerspoon;
+    const leader = hsConfig?.prefix || "control-space";
+
+    let leaderMod: string[] = [];
+    let leaderKey = "";
+
+    if (leader.includes('-')) {
+      const parts = leader.split('-');
+      leaderKey = parts.pop() || "";
+      leaderMod = parts + "";
+    } else {
+      leaderKey = leader;
+    }
+
+    const output: string[] = [
+      "-- Generated from extend config",
+      "-- Do not edit this file directly",
+      "",
+      `local root = hs.hotkey.modal.new(${JSON.stringify(leaderMod)}, ${JSON.stringify(leaderKey)})`,
+      "function root:entered() hs.alert.show('Extend Mode') end",
+      "function root:exited() hs.alert.closeAll() end",
+      'root:bind("", "escape", function() root:exit() end)',
+      ""
+    ];
+
+    const walk = (node: Node, modalStack: string[]) => {
+      const parentModal = modalStack[modalStack.length - 1];
+      if (node.children) {
+        Object.entries(node.children).forEach(([key, child]) => {
+          if (child.exec) {
+            const cmd = resolveCommand(child.exec);
+            const desc = child.description || key;
+            const type = child.type;
+
+            output.push(`${parentModal}:bind("", ${JSON.stringify(key)}, ${JSON.stringify(desc)}, function()`);
+            if (type === 'function' || type === 'func' || cmd.includes('hs.') || cmd.includes('(')) {
+              output.push(`  ${cmd.replace(/\n/g, '\n  ')}`);
+            } else {
+              output.push(`  hs.execute(${JSON.stringify(cmd)})`);
+            }
+            modalStack.slice().reverse().forEach(m => {
+              output.push(`  ${m}:exit()`);
+            });
+            output.push("end)");
+          } else if (child.children) {
+            const modalName = `modal_${parentModal}_${key}`.replace(/[^a-zA-Z0-9_]/g, '_');
+            output.push(`local ${modalName} = hs.hotkey.modal.new()`);
+            output.push(`${parentModal}:bind("", ${JSON.stringify(key)}, ${JSON.stringify(child.description || key)}, function() ${modalName}:enter() end)`);
+            output.push(`${modalName}:bind("", "escape", function()`);
+            output.push(`  ${modalName}:exit()`);
+            modalStack.slice().reverse().forEach(m => {
+              output.push(`  ${m}:exit()`);
+            });
+            output.push("end)");
+            walk(child, [...modalStack, modalName]);
+          }
+        });
+      }
+    };
+
+    Object.entries(tree).forEach(([category, rootNodes]) => {
+      Object.entries(rootNodes).forEach(([key, node]) => {
+        if (node.exec) {
+          const cmd = resolveCommand(node.exec);
+          const type = node.type;
+          output.push(`root:bind("", ${JSON.stringify(key)}, ${JSON.stringify(node.description || key)}, function()`);
+          if (type === 'function' || type === 'func' || cmd.includes('hs.') || cmd.includes('(')) {
+            output.push(`  ${cmd.replace(/\n/g, '\n  ')}`);
+          } else {
+            output.push(`  hs.execute(${JSON.stringify(cmd)})`);
+          }
+          output.push(`  root:exit()`);
+          output.push("end)");
+        } else if (node.children) {
+          const modalName = `modal_${category}_${key}`.replace(/[^a-zA-Z0-9_]/g, '_');
+          output.push(`local ${modalName} = hs.hotkey.modal.new()`);
+          output.push(`root:bind("", ${JSON.stringify(key)}, ${JSON.stringify(node.description || key)}, function() ${modalName}:enter() end)`);
+          output.push(`${modalName}:bind("", "escape", function()`);
+          output.push(`  ${modalName}:exit()`);
+          output.push(`  root:exit()`);
+          output.push("end)");
+          walk(node, ["root", modalName]);
+        }
+      });
+    });
+
+    return output.join("\n");
+  }
+
+  sync() {
+    const config = loadConfig();
+    const hsConfig = config.renderers.hammerspoon;
+    if (!hsConfig || !hsConfig.enabled) return;
+
+    const tree = loadTree(hsConfig.source_path);
+    const content = this.render(tree);
+    fs.writeFileSync(hsConfig.output_path, content);
+  }
+}
+
 export const STRATEGIES: { [key: string]: ConfigStrategy } = {
   zsh: new ZshStrategy(),
-  tmux: new TmuxStrategy()
+  tmux: new TmuxStrategy(),
+  hammerspoon: new HammerspoonStrategy()
 };
 
 function tableToTree(source: TableSource, baseDir: string): Tree {
@@ -281,7 +420,7 @@ function tableToTree(source: TableSource, baseDir: string): Tree {
     }
   });
 
-  const entryPoints = Object.keys(tables).filter(name => 
+  const entryPoints = Object.keys(tables).filter(name =>
     name === 'root' || name === 'prefix' || !referencedTables.has(name)
   );
 
@@ -292,7 +431,7 @@ function tableToTree(source: TableSource, baseDir: string): Tree {
     tableDef.binds.forEach(bind => {
       const category = bind.category || tableDef.description || name;
       if (!tree[category]) tree[category] = {};
-      
+
       const node = bindToNode(bind, tables, baseDir);
       if (node.tableName === undefined) node.tableName = name;
       if (node.tableDescription === undefined) node.tableDescription = tableDef.description || name;
@@ -324,6 +463,7 @@ function tableToTree(source: TableSource, baseDir: string): Tree {
 function bindToNode(bind: TableBind, tables: { [name: string]: TableDef }, baseDir: string): Node {
   const node: Node = {
     description: bind.description,
+    type: bind.type,
   };
 
   if (bind.action) {
@@ -365,22 +505,22 @@ export function saveTree(tree: Tree, filePath: string) {
 function treeToTable(tree: Tree, sourcePath: string): TableSource {
   const tables: TableSource = [];
   const rootBinds: TableBind[] = [];
-  
+
   for (const [category, rootNodes] of Object.entries(tree)) {
     for (const [key, node] of Object.entries(rootNodes)) {
       const tableName = `table_${category}_${key}`.replace(/\./g, '_');
       const hasChildren = node.children && Object.keys(node.children).length > 0 && !node._source;
-      
+
       rootBinds.push({
         key,
         table: hasChildren ? tableName : undefined,
         description: node.description,
         category,
         action: node.exec,
-        type: node.exec ? 'exec' : undefined,
+        type: node.type as any,
         bundle: node._source ? path.relative(path.dirname(sourcePath), node._source) : undefined
       });
-      
+
       if (hasChildren && node.children) {
         nodeToTable(tableName, node.children, [category, key], tables, sourcePath);
       }
@@ -393,26 +533,26 @@ function treeToTable(tree: Tree, sourcePath: string): TableSource {
 
 function nodeToTable(name: string, children: { [key: string]: Node }, nodePath: string[], tables: TableSource, sourcePath: string) {
   const binds: TableBind[] = [];
-  
+
   for (const [key, node] of Object.entries(children)) {
     const currentPath = [...nodePath, key];
     const tableName = `table_${currentPath.join('_')}`.replace(/\./g, '_');
     const hasChildren = node.children && Object.keys(node.children).length > 0 && !node._source;
-    
+
     binds.push({
       key,
       table: hasChildren ? tableName : undefined,
       description: node.description,
       action: node.exec,
-      type: node.exec ? 'exec' : undefined,
+      type: node.type as any,
       bundle: node._source ? path.relative(path.dirname(sourcePath), node._source) : undefined
     });
-    
+
     if (hasChildren && node.children) {
       nodeToTable(tableName, node.children, currentPath, tables, sourcePath);
     }
   }
-  
+
   tables.push({ [name]: { binds } });
 }
 
@@ -427,13 +567,25 @@ export function walk(node: Node, mnemonic: string = "", slugParts: string[] = []
     const comment = `# ${mnemonic}: ${slugParts.join(' -> ')}`;
     const fullPath = slugParts.slice(0, -1).join(' -> ');
 
-    entries.push({ 
-      type: cmd.startsWith("export ") ? 'export' : (cmd.includes(';') || cmd.includes('$') || cmd.includes('if ') ? 'func' : 'alias'),
-      mnemonic, 
-      name: fullName, 
-      cmd, 
-      comment, 
+    const getEntryType = (cmd: string, explicitType?: string): 'alias' | 'func' | 'export' => {
+      if (explicitType === 'alias') return 'alias';
+      if (explicitType === 'function' || explicitType === 'func') return 'func';
+      if (explicitType === 'export') return 'export';
+
+      // Auto-detection fallback
+      if (cmd.startsWith("export ")) return 'export';
+      if (cmd.includes(';') || cmd.includes('$') || cmd.includes('if ') || cmd.includes('\n')) return 'func';
+      return 'alias';
+    };
+
+    entries.push({
+      type: getEntryType(cmd, node.type),
+      mnemonic,
+      name: fullName,
+      cmd,
+      comment,
       category: fullPath || effectiveDescription || effectiveTable || category,
+      rootCategory: category,
       description: node.description || "",
       source: (node as any)._source,
       node: node
@@ -454,7 +606,7 @@ export function getAllEntries(tree: Tree, strategy: ConfigStrategy): Entry[] {
   let allEntries: Entry[] = [];
   for (const [category, rootNodes] of Object.entries(tree)) {
     if (typeof rootNodes !== 'object') continue;
-    
+
     for (const [key, node] of Object.entries(rootNodes)) {
       const initialTable = category === 'unknown' ? undefined : category;
       allEntries = allEntries.concat(walk(node, key, [node.description || ""], category, strategy, initialTable, node.tableDescription));
@@ -488,7 +640,7 @@ function resolveBundles(tree: any, baseDir: string, parentTable?: string, parent
     if (node && typeof node === 'object') {
       const currentTable = node.tableName || parentTable || (parentTable === undefined ? key : undefined);
       const currentDescription = node.tableDescription || parentDescription || (parentDescription === undefined ? (node.description || key) : undefined);
-      
+
       resolved[key] = resolveBundles(node, baseDir, currentTable, currentDescription);
       if (resolved[key] && typeof resolved[key] === 'object') {
         if (resolved[key].tableName === undefined) resolved[key].tableName = currentTable;
@@ -507,27 +659,27 @@ export function generateTmux(filePath: string): string {
   const content = fs.readFileSync(filePath, 'utf8');
   const smartSwitch = path.resolve(__dirname, '../../smart_session_switch.rb');
   const helperScript = path.resolve(__dirname, '../../tmux_mode_helper.rb');
-  
+
   let dataContent = content.replace(/#\{smart_session_switch\}/g, smartSwitch);
   const rawData = yaml.load(dataContent) as TableSource;
-  
+
   const data = resolveBundlesForTmux(rawData, path.dirname(filePath));
   const tableMnemonics = calculateTableMnemonics(data);
   const allBindsForPalette: string[] = [];
-  
+
   const allGenerated = data.map(entry => {
     if (!entry) return "";
     const [name, tableData] = Object.entries(entry)[0];
     const modal = tableData.modal === true;
-    
+
     const validBinds = tableData.binds.filter(bind => {
-       if (!bind.dependency) return true;
-       try {
-         execSync(`which ${bind.dependency}`, { stdio: 'ignore' });
-         return true;
-       } catch (e) {
-         return false;
-       }
+      if (!bind.dependency) return true;
+      try {
+        execSync(`which ${bind.dependency}`, { stdio: 'ignore' });
+        return true;
+      } catch (e) {
+        return false;
+      }
     });
 
     const tableMnemonic = tableMnemonics[name] || "";
@@ -538,17 +690,17 @@ export function generateTmux(filePath: string): string {
       }
       return formatBind(b);
     });
-    
+
     if (!fs.existsSync(HINTS_DIR)) fs.mkdirSync(HINTS_DIR, { recursive: true });
     fs.writeFileSync(path.join(HINTS_DIR, `${name}.txt`), hintLines.join("\n"));
-    
+
     const lines: string[] = [];
     lines.push(`# table: ${name}`);
     lines.push(`# modal: ${modal}`);
     if (name !== 'root' && name !== 'prefix') {
-       lines.push(`unbind-key -a -T${name}`);
-       const rubyBin = process.platform === 'darwin' ? '/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby' : 'ruby';
-       lines.push(`bind-key -T${name} ? display-popup -E -w 80% -h 40% "${rubyBin} --disable-gems ${helperScript} fuzzy ${name}"`);
+      lines.push(`unbind-key -a -T${name}`);
+      const rubyBin = process.platform === 'darwin' ? '/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby' : 'ruby';
+      lines.push(`bind-key -T${name} ? display-popup -E -w 80% -h 40% "${rubyBin} --disable-gems ${helperScript} fuzzy ${name}"`);
     }
 
     validBinds.forEach(bind => {
@@ -562,7 +714,7 @@ export function generateTmux(filePath: string): string {
       }
       lines.push(`bind-key -T${name} ${key} ${action}`);
     });
-    
+
     return lines.join("\n");
   });
 
@@ -596,7 +748,7 @@ function resolveBundlesForTmux(entries: TableSource, baseDir: string): TableSour
           if (fs.existsSync(bundlePath)) {
             const bundleContent = yaml.load(fs.readFileSync(bundlePath, 'utf8')) as any;
             const bundleName = path.basename(bundlePath, '.extend.yml');
-            
+
             newBinds.push({
               key: bind.key,
               table: bundleName,
@@ -627,7 +779,7 @@ function resolveBundlesForTmux(entries: TableSource, baseDir: string): TableSour
         }
       });
     }
-    
+
     resolved.push({ [name]: { ...tableData, binds: newBinds } });
   }
   return resolved;
@@ -680,7 +832,7 @@ function formatAllBind(tableName: string, tableDescription: string, tableMnemoni
 
 function getTmuxAction(bind: TableBind, tableName: string, isModal: boolean): string {
   let action = resolveCommand(bind.action);
-  
+
   if (!action && bind.table) {
     return `switch-client -T${bind.table} \\; display-message '${bind.table}'`;
   }
@@ -703,7 +855,7 @@ function getTmuxAction(bind: TableBind, tableName: string, isModal: boolean): st
   if (isModal) {
     action += ` \\; switch-client -T${tableName}`;
   }
-  
+
   return action;
 }
 

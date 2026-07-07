@@ -14,7 +14,7 @@ async function main() {
   yargs(hideBin(process.argv))
     .command('$0', 'Start the TUI', () => {}, async () => {
       try {
-        const target = process.env.TARGET === 'tmux' ? 'tmux' : 'zsh';
+        const target = process.env.TARGET as any || 'zsh';
         const initialSourcePath = config.renderers[target]?.source_path || config.renderers['zsh']?.source_path;
         
         if (!initialSourcePath) {
@@ -45,14 +45,12 @@ async function main() {
     })
     .command('sync', 'Sync all enabled configurations', () => {}, () => {
       console.log("Syncing all configurations...");
-      if (config.renderers.zsh?.enabled) {
-        console.log("Syncing Zsh aliases...");
-        syncZsh();
-      }
-      if (config.renderers.tmux?.enabled) {
-        console.log("Syncing Tmux configuration...");
-        syncTmux();
-      }
+      Object.entries(STRATEGIES).forEach(([id, strategy]) => {
+        if (config.renderers[id]?.enabled) {
+          console.log(`Syncing ${id.toUpperCase()}...`);
+          strategy.sync();
+        }
+      });
       console.log("Done!");
     })
     .command('install-scripts', 'Print source commands for enabled tools', () => {}, () => {

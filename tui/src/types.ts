@@ -1,5 +1,6 @@
 export interface Node {
   description?: string;
+  type?: string;
   exec?: string | { [platform: string]: string };
   children?: { [key: string]: Node };
   bundle?: string; // Path to a bundle file to load at this node
@@ -13,7 +14,7 @@ export interface TableBind {
   key: string;
   table?: string;
   bundle?: string;
-  type?: 'exec' | 'send' | 'run' | 'test';
+  type?: 'exec' | 'send' | 'run' | 'test' | 'function' | 'alias' | 'export';
   action?: string | { [platform: string]: string };
   description?: string;
   category?: string;
@@ -45,6 +46,7 @@ export interface Entry {
   cmd: string;
   comment: string;
   category: string;
+  rootCategory: string;
   description: string;
   source?: string; // Track which file it came from
   node?: Node;
