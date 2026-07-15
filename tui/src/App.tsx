@@ -358,7 +358,7 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
     gray: RGBA.fromIndex(8), darkGray: RGBA.fromIndex(0), selection: RGBA.fromIndex(4),
   }), []);
 
-  const itemHeight = 3;
+  const itemHeight = 1;
   const basePadding = 9;
   const totalPadding = basePadding + (mode === 'search' ? 4 : 0) + (mode === 'navigate' ? 4 : 0) + ((mode === 'add' || mode === 'edit') ? (isPlatformSpecific ? 10 + platformCommands.length * 2 : 10) : 0) + (selectedEntry ? (typeof selectedEntry.node?.exec === 'object' ? 8 : 6) : 0) + ((mode === 'search' && searchFocus === 'list') ? 2 : 0);
   const availableHeight = height - totalPadding;
@@ -367,7 +367,7 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
 
   const renderEntries = () => {
     return (
-      <scrollbox style={{ flexGrow: 1 }} scrollTop={startIdx * itemHeight}>
+      <scrollbox style={{ flexGrow: 1, borderStyle: 'rounded' }} scrollTop={startIdx * itemHeight}>
         <box style={{ flexDirection: 'column' }}>
           {filteredEntries.map((entry: any, i) => {
             const isSelected = i === selectedIndex;
@@ -376,7 +376,7 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
               const indent = item.level * 2;
               const marker = item.hasChildren ? (item.isExpanded ? '▾' : '▸') : ' ';
               return (
-                <box key={item.id} style={{ backgroundColor: isSelected ? colors.selection : undefined, flexDirection: 'row', height: itemHeight, paddingY: 0, borderBottom: true, borderStyle: 'single', borderColor: colors.darkGray }}>
+                <box key={item.id} style={{ backgroundColor: isSelected ? colors.selection : undefined, flexDirection: 'row', height: itemHeight, paddingY: 0 }}>
                   <box style={{ height: 1, flexDirection: 'row', width: '100%', paddingLeft: indent }}>
                     <text style={{ width: 2, fg: colors.yellow }}>{marker}</text>
                     <text style={{ width: 20, fg: isSelected ? colors.white : (item.type === 'leaf' ? colors.green : colors.magenta) }}><b>{item.label}</b></text>
@@ -387,7 +387,7 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
               );
             }
             return (
-              <box key={`${entry.category}-${entry.mnemonic}-${i}`} style={{ backgroundColor: isSelected ? colors.selection : undefined, flexDirection: 'row', height: itemHeight, paddingY: 0, justifyContent: 'space-between', borderBottom: true, borderStyle: 'single', borderColor: colors.darkGray }}>
+              <box key={`${entry.category}-${entry.mnemonic}-${i}`} style={{ backgroundColor: isSelected ? colors.selection : undefined, flexDirection: 'row', height: itemHeight, paddingY: 0, justifyContent: 'space-between' }}>
                 <box style={{ height: 1, flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
                   <text style={{ width: '10%', fg: isSelected ? colors.white : colors.green }}><b>[{entry.mnemonic}]</b></text>
                   <text style={{ width: '40%', fg: isSelected ? colors.white : colors.cyan }}>{isSelected ? <b>{entry.name}</b> : entry.name}</text>
@@ -403,8 +403,8 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
   };
 
   return (
-    <box style={{ width, height, flexDirection: 'column', padding: 0, borderStyle: 'single', borderColor: colors.gray, backgroundColor: colors.bg }}>
-      <box style={{ height: 1, flexDirection: 'row', justifyContent: 'space-between', paddingX: 1, marginBottom: 1 }}>
+    <box style={{ width, height, flexDirection: 'column', padding: 0, backgroundColor: colors.bg }}>
+      <box style={{ height: 1, flexDirection: 'row', justifyContent: 'space-between', paddingX: 1, marginBottom: 0 }}>
         <box style={{ flexDirection: 'row' }}>
           <text style={{ fg: colors.magenta }}><b>{target.toUpperCase()} EXTEND </b></text>
           <text style={{ fg: colors.cyan }}>[{mode.toUpperCase()}]</text>
@@ -412,7 +412,7 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
         <text style={{ fg: colors.yellow }}>{filteredEntries.length} items</text>
       </box>
       {mode === 'search' && (
-        <box style={{ height: 3, borderStyle: 'single', borderColor: searchFocus === 'input' ? colors.yellow : colors.darkGray, paddingX: 1, marginBottom: 1 }}>
+        <box style={{ height: 3, borderStyle: 'rounded', borderColor: searchFocus === 'input' ? colors.yellow : colors.darkGray, paddingX: 1, marginBottom: 0 }}>
           <input value={searchQuery} placeholder="Filter" focused={searchFocus === 'input'} onInput={setSearchQuery as any} />
         </box>
       )}
@@ -423,7 +423,7 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
         </box>
       )}
       {(mode === 'add' || mode === 'edit') && (
-        <box style={{ flexDirection: 'column', borderStyle: 'single', borderColor: mode === 'add' ? colors.green : colors.yellow, padding: 1, marginBottom: 1 }}>
+        <box style={{ flexDirection: 'column', flexGrow: 1, borderStyle: 'rounded', borderColor: mode === 'add' ? colors.green : colors.yellow, padding: 0, marginBottom: 0 }}>
           <text style={{ fg: mode === 'add' ? colors.green : colors.yellow, marginBottom: 1 }}><b>{mode === 'add' ? 'ADD NEW ENTRY' : 'EDIT ENTRY'}</b></text>
           <box><text style={{ width: 12, fg: colors.green }}>Mnemonic: </text><input value={formMnemonic} focused={formField === 0} onInput={setFormMnemonic as any} /></box>
           <box><text style={{ width: 12, fg: colors.green }}>Full Name: </text><input value={formName} focused={formField === 1} onInput={setFormName as any} /></box>
@@ -457,20 +457,20 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
           <text style={{ fg: colors.gray, marginTop: 1 }}>[Tab/S-Tab] Cycle Fields | [Enter] Save | [Esc] Cancel</text>
         </box>
       )}
-      {renderEntries()}
-      {selectedEntry && (
-        <box style={{ height: typeof selectedEntry.node?.exec === 'object' ? 7 : 5, borderStyle: 'double', borderColor: colors.gray, paddingX: 1, marginTop: 1, flexDirection: 'column' }}>
+      {(mode !== 'add' && mode !== 'edit') && renderEntries()}
+      {(mode !== 'add' && mode !== 'edit') && selectedEntry && (
+        <box style={{ height: typeof selectedEntry.node?.exec === 'object' ? 7 : 5, borderStyle: 'rounded', borderColor: colors.gray, paddingX: 1, marginTop: 0, flexDirection: 'column' }}>
           <box><text style={{ fg: colors.white }}>{selectedEntry.cmd}</text></box>
           {typeof selectedEntry.node?.exec === 'object' && (
-            <box style={{ flexDirection: 'column', marginTop: 1 }}>
+            <box style={{ flexDirection: 'column', marginTop: 0 }}>
               {Object.entries(selectedEntry.node.exec).map(([p, c]) => (<text key={p} style={{ fg: p === process.platform ? colors.green : colors.gray, height: 1 }}>• {p}: {c}</text>))}
             </box>
           )}
         </box>
       )}
-      <box style={{ height: 3, borderTop: true, borderStyle: 'single', borderColor: colors.gray, marginTop: 0, paddingX: 1 }}>
+      {false && (<box style={{ height: 3, borderStyle: 'rounded', borderColor: colors.gray, marginTop: 0, paddingX: 1 }}>
         <text style={{ fg: colors.gray }}>[j/k] Nav | [Enter] Run | [/] Filter | [g] Group | [h/l] Tree | [e] Edit | [d] Del | [a] Add | [s] Sync | [Ctrl+L] Debug | [q] Quit</text>
-      </box>
+      </box>)}
       {showDebug && (
         <box style={{ position: 'absolute', bottom: 4, right: 2, width: 40, height: 12, borderStyle: 'single', borderColor: colors.magenta, backgroundColor: colors.bg, flexDirection: 'column', padding: 1 }}>
           <text style={{ fg: colors.magenta, marginBottom: 1 }}><b>DEBUG: KEY LOG</b></text>
