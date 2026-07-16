@@ -1,23 +1,69 @@
-# Tmux Gen
+# extend-cli
 
-A dynamic, mnemonic-based environment generator for Tmux and ZSH. It provides a unified system for managing shortcuts with searchable hints and a "which-key" style experience.
+A dynamic, mnemonic-based keybinding generator and TUI for Tmux, Zsh, and Hammerspoon.
 
-## Goals
-- **Mnemonic Mastery**: Organize bindings and aliases into logical, easy-to-remember hierarchies.
-- **Searchable Discoverability**: Integrated `fzf` popups (`?`) show available commands for the current mode.
-- **Unified Management**: Manage both terminal aliases and tmux keybindings from a single interface.
-- **AI-Friendly**: Structured YAML formats (`extend.yml`, `extend_source.yml`) with JSON schemas for easy extension.
+`extend-cli` bridges the gap between complex terminal workflows and human memory. It allows you to define hierarchical, mnemonic keybindings in YAML and generates the native configuration files for your favorite tools.
 
-## Usage
-- **`task build`**: Generate and sync all configurations.
-- **`task tui`**: Open the interactive management interface.
-- **`?`**: While in a tmux mode, show a searchable command list.
+## The Problem
+As developers, we accumulate hundreds of aliases, functions, and tmux bindings. Remembering that `gaa` is `git add --all` is easy, but remembering the binding for "resize-pane -D 5" in a specific tmux nested table or a complex Hammerspoon window management script is hard.
 
-## Implementation Details: `task tui`
-The management interface is a modern terminal application built with **OpenTUI** (React + Bun).
+## The Solution
+`extend-cli` provides:
+1. **Mnemonic YAML Config**: Define bindings like `f` (file) -> `e` (edit) -> `c` (config).
+2. **Multi-Target Rendering**: Generate `~/.zshrc` aliases, `~/.tmux.conf` key tables, and Hammerspoon Lua scripts from a single source of truth.
+3. **Interactive TUI**: A React-based terminal interface to browse, search, add, and edit your bindings in real-time.
+4. **Fzf Integration**: Automatically generates hint files for fuzzy-searching your commands.
 
-- **Architecture**: The TUI logic (`tui/src/logic.ts`) consolidates configuration management, previously handled by Ruby.
-- **Multi-Target**: Supports toggling between `ZSH` (aliases) and `TMUX` (bindings) targets with the `t` key.
-- **Dynamic Rendering**: Features a custom scrollbox implementation for navigating large lists of bindings without clipping.
-- **Smart Syncing**: The `s` key in the TUI triggers the appropriate generation engine for the active target, creating `extra.conf` for Tmux or `dev.extend.zsh` for shell aliases.
-- **Schemas**: Full JSON schema support for validation and editor autocompletion.
+## Features
+- **Context Aware**: Handles platform-specific commands (different commands for `darwin` vs `linux`).
+- **Smart Rendering**: Converts multi-line scripts into Zsh functions or Tmux run-shells automatically.
+- **Visual Management**: Use the built-in TUI to manage your "command palette" without touching YAML.
+- **Which-Key Experience**: Provides a "Which-Key" style popup in Tmux and Hammerspoon.
+
+## Installation
+
+```bash
+npm install -g extend-cli
+```
+
+## Quick Start
+
+1. **Initialize your config**:
+   `extend-cli` looks for configuration in `~/.config/extend/config.json`.
+
+2. **Define a binding in `zsh.extend.yml`**:
+   ```yaml
+   - root:
+       binds:
+         - key: f
+           description: file
+           table: file_operations
+   - file_operations:
+       binds:
+         - key: e
+           description: edit config
+           action: vim ~/.zshrc
+   ```
+
+3. **Launch the TUI**:
+   ```bash
+   extend
+   ```
+
+4. **Sync**:
+   The TUI or the CLI will generate your `.zsh` or `.conf` files. Source them in your main config:
+   ```zsh
+   # In .zshrc
+   source ~/.config/extend/extend.zsh
+   ```
+
+## TUI Shortcuts
+- `?`: Show help modal
+- `/`: Search/Filter all bindings
+- `g`: Toggle between Flat and Grouped (tree) view
+- `a`/`e`/`d`: Add, Edit, or Delete entries
+- `t`: Cycle targets (Zsh -> Tmux -> Hammerspoon)
+- `s`: Sync changes to disk
+
+## License
+MIT
