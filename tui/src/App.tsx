@@ -52,6 +52,7 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
 
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Entry | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   const [keyHistory, setKeyHistory] = useState<string[]>([]);
 
@@ -248,6 +249,10 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
 
   useKeyboard((e) => {
     setKeyHistory(prev => [JSON.stringify(e), ...prev].slice(0, 10));
+    if (showHelp) {
+      if (e.name === 'escape' || e.name === '?') setShowHelp(false);
+      return;
+    }
     if (confirmDelete) {
       if (e.name === 'y') { handleDelete(); setConfirmDelete(null); }
       else if (e.name === 'n' || e.name === 'escape') setConfirmDelete(null);
@@ -256,6 +261,7 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
     if (e.ctrl && e.name === 'l') { setShowDebug(v => !v); return; }
 
     if (mode === 'normal') {
+      if (e.name === '?') { setShowHelp(true); return; }
       if (e.name === 'j' || e.name === 'l' || (e.ctrl && (e.name === 'n' || e.name === 'f')) || e.name === 'down') setSelectedIndex(s => Math.min(s + 1, filteredEntries.length - 1));
       if (e.name === 'k' || e.name === 'h' || (e.ctrl && (e.name === 'p' || e.name === 'b')) || e.name === 'up') setSelectedIndex(s => Math.max(s - 1, 0));
       if (e.name === 'q') onExit();
@@ -351,6 +357,41 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
   });
 
 
+  const renderHelpModal = () => {
+    if (!showHelp) return null;
+    const shortcuts = [
+      { key: 'j/k, ↑/↓', desc: 'Navigate list' },
+      { key: 'Enter', desc: 'Run command / Expand group' },
+      { key: '/', desc: 'Search / Filter' },
+      { key: 'n', desc: 'Mnemonic jump' },
+      { key: 'g', desc: 'Toggle Flat / Grouped view' },
+      { key: 'h/l', desc: 'Expand/Collapse (Grouped)' },
+      { key: 'a', desc: 'Add new entry' },
+      { key: 'e', desc: 'Edit selected entry' },
+      { key: 'd', desc: 'Delete selected entry' },
+      { key: 's', desc: 'Sync configuration' },
+      { key: 't', desc: 'Switch Target (Zsh/Tmux/HS)' },
+      { key: 'Ctrl+L', desc: 'Toggle Debug log' },
+      { key: '?', desc: 'Close Help' },
+      { key: 'q, Esc', desc: 'Quit / Close' },
+    ];
+
+    return (
+      <box style={{ position: 'absolute', top: 'center', left: 'center', width: 60, height: 18, borderStyle: 'rounded', borderColor: colors.cyan, backgroundColor: colors.bg, flexDirection: 'column', padding: 1 }}>
+        <text style={{ fg: colors.cyan, marginBottom: 1, textAlign: 'center' }}><b>KEYBOARD SHORTCUTS</b></text>
+        <box style={{ flexDirection: 'column' }}>
+          {shortcuts.map((s, i) => (
+            <box key={i} style={{ flexDirection: 'row', marginBottom: 0 }}>
+              <text style={{ width: 15, fg: colors.green }}><b>{s.key}</b></text>
+              <text style={{ fg: colors.fg }}>{s.desc}</text>
+            </box>
+          ))}
+        </box>
+        <text style={{ fg: colors.gray, marginTop: 1, textAlign: 'center' }}>Press any key to close</text>
+      </box>
+    );
+  };
+
   const colors = useMemo(() => ({
     fg: RGBA.defaultForeground(), bg: RGBA.defaultBackground(),
     magenta: RGBA.fromIndex(13), cyan: RGBA.fromIndex(14), yellow: RGBA.fromIndex(11),
@@ -402,28 +443,10 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
     );
   };
 
-  return (
-    <box style={{ width, height, flexDirection: 'column', padding: 0, backgroundColor: colors.bg }}>
-      <box style={{ height: 1, flexDirection: 'row', justifyContent: 'space-between', paddingX: 1, marginBottom: 0 }}>
-        <box style={{ flexDirection: 'row' }}>
-          <text style={{ fg: colors.magenta }}><b>{target.toUpperCase()} EXTEND </b></text>
-          <text style={{ fg: colors.cyan }}>[{mode.toUpperCase()}]</text>
-        </box>
-        <text style={{ fg: colors.yellow }}>{filteredEntries.length} items</text>
-      </box>
-      {mode === 'search' && (
-        <box style={{ height: 3, borderStyle: 'rounded', borderColor: searchFocus === 'input' ? colors.yellow : colors.darkGray, paddingX: 1, marginBottom: 0 }}>
-          <input value={searchQuery} placeholder="Filter" focused={searchFocus === 'input'} onInput={setSearchQuery as any} />
-        </box>
-      )}
-      {mode === 'navigate' && (
-        <box style={{ height: 3, borderStyle: 'single', borderColor: colors.cyan, paddingX: 1, marginBottom: 1 }}>
-          <text style={{ fg: colors.cyan }}>🧭 Go to: </text>
-          <text style={{ fg: colors.white, bg: colors.blue }}><b> {navigateQuery} </b></text>
-        </box>
-      )}
-      {(mode === 'add' || mode === 'edit') && (
-        <box style={{ flexDirection: 'column', flexGrow: 1, borderStyle: 'rounded', borderColor: mode === 'add' ? colors.green : colors.yellow, padding: 0, marginBottom: 0 }}>
+  const renderModal = () => {
+    return (
+      <scrollbox style={{ flexGrow: 1, borderStyle: 'rounded' }} >
+        <box style={{ flexDirection: 'column', flexGrow: 1, borderColor: mode === 'add' ? colors.green : colors.yellow, padding: 0, marginBottom: 0 }}>
           <text style={{ fg: mode === 'add' ? colors.green : colors.yellow, marginBottom: 1 }}><b>{mode === 'add' ? 'ADD NEW ENTRY' : 'EDIT ENTRY'}</b></text>
           <box><text style={{ width: 12, fg: colors.green }}>Mnemonic: </text><input value={formMnemonic} focused={formField === 0} onInput={setFormMnemonic as any} /></box>
           <box><text style={{ width: 12, fg: colors.green }}>Full Name: </text><input value={formName} focused={formField === 1} onInput={setFormName as any} /></box>
@@ -456,7 +479,31 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
           )}
           <text style={{ fg: colors.gray, marginTop: 1 }}>[Tab/S-Tab] Cycle Fields | [Enter] Save | [Esc] Cancel</text>
         </box>
+      </scrollbox>
+    );
+  };
+
+  return (
+    <box style={{ width, height, flexDirection: 'column', padding: 0, backgroundColor: colors.bg }}>
+      <box style={{ height: 1, flexDirection: 'row', justifyContent: 'space-between', paddingX: 1, marginBottom: 0 }}>
+        <box style={{ flexDirection: 'row' }}>
+          <text style={{ fg: colors.magenta }}><b>{target.toUpperCase()} EXTEND </b></text>
+          <text style={{ fg: colors.cyan }}>[{mode.toUpperCase()}]</text>
+        </box>
+        <text style={{ fg: colors.yellow }}>{filteredEntries.length} items</text>
+      </box>
+      {mode === 'search' && (
+        <box style={{ height: 3, borderStyle: 'rounded', borderColor: searchFocus === 'input' ? colors.yellow : colors.darkGray, paddingX: 1, marginBottom: 0 }}>
+          <input value={searchQuery} placeholder="Filter" focused={searchFocus === 'input'} onInput={setSearchQuery as any} />
+        </box>
       )}
+      {mode === 'navigate' && (
+        <box style={{ height: 3, borderStyle: 'single', borderColor: colors.cyan, paddingX: 1, marginBottom: 1 }}>
+          <text style={{ fg: colors.cyan }}>🧭 Go to: </text>
+          <text style={{ fg: colors.white, bg: colors.blue }}><b> {navigateQuery} </b></text>
+        </box>
+      )}
+      {(mode === 'add' || mode === 'edit') && renderModal()}
       {(mode !== 'add' && mode !== 'edit') && renderEntries()}
       {(mode !== 'add' && mode !== 'edit') && selectedEntry && (
         <box style={{ height: typeof selectedEntry.node?.exec === 'object' ? 7 : 5, borderStyle: 'rounded', borderColor: colors.gray, paddingX: 1, marginTop: 0, flexDirection: 'column' }}>
@@ -468,9 +515,6 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
           )}
         </box>
       )}
-      {false && (<box style={{ height: 3, borderStyle: 'rounded', borderColor: colors.gray, marginTop: 0, paddingX: 1 }}>
-        <text style={{ fg: colors.gray }}>[j/k] Nav | [Enter] Run | [/] Filter | [g] Group | [h/l] Tree | [e] Edit | [d] Del | [a] Add | [s] Sync | [Ctrl+L] Debug | [q] Quit</text>
-      </box>)}
       {showDebug && (
         <box style={{ position: 'absolute', bottom: 4, right: 2, width: 40, height: 12, borderStyle: 'single', borderColor: colors.magenta, backgroundColor: colors.bg, flexDirection: 'column', padding: 1 }}>
           <text style={{ fg: colors.magenta, marginBottom: 1 }}><b>DEBUG: KEY LOG</b></text>
@@ -484,6 +528,7 @@ export const App: React.FC<AppProps> = ({ initialTree, onExit }) => {
           <text style={{ fg: colors.gray }}>[y] Yes | [n] No / Cancel</text>
         </box>
       )}
+      {renderHelpModal()}
     </box>
   );
 };
